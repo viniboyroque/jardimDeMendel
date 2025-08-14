@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Mendel's Garden / Jardim de Mendel</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+    }
+    h1, h2 {
+        text-align: center;
+    }
+    .container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+    }
+    .panel {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        min-width: 300px;
+    }
+    .seed-bank, .garden-box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+    }
+    .seed {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        position: relative;
+        cursor: pointer;
+        border: 2px solid transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .seed.selected {
+        border: 3px solid gold;
+    }
+    .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        position: absolute;
+    }
+    .slot {
+        width: 60px;
+        height: 60px;
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #fafafa;
+    }
+    .slot.empty {
+        background-color: #fdf5f5;
+        opacity: 0.6;
+    }
+    button {
+        padding: 8px 14px;
+        border: none;
+        border-radius: 5px;
+        background: #4CAF50;
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s ease, transform 0.2s ease;
+    }
+    button:hover {
+        background: #45a049;
+        transform: scale(1.05);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+    th, td {
+        border-bottom: 1px solid #ccc;
+        padding: 5px;
+        text-align: center;
+    }
+    .bottom-container {
+        display: flex;
+        gap: 20px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+    .challenges-card {
+        flex: 1;
+        min-width: 300px;
+    }
+    .progress-bar {
+        background: #ddd;
+        border-radius: 5px;
+        overflow: hidden;
+        height: 15px;
+        margin-bottom: 10px;
+    }
+    .progress-fill {
+        background: #4CAF50;
+        height: 100%;
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+    .completed {
+        color: green;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+<div style="text-align:right">
+  <label for="lang-select">Idioma / Language:</label>
+  <select id="lang-select" onchange="changeLanguage(this.value)">
+    <option value="pt" selected>Português</option>
+    <option value="en">English</option>
+  </select>
+</div>
+<h1 id="title"></h1>
+<div class="container">
+    <div class="panel">
+        <h2 id="seed-bank-title"></h2>
+        <div class="seed-bank" id="seed-bank"></div>
+        <br>
+        <button id="plant-button" onclick="plantSelectedSeed()"></button>
+    </div>
+    <div class="panel">
+        <h2 id="garden-box-title"></h2>
+        <div class="garden-box" id="garden-box"></div>
+        <br>
+        <button id="pollinate-button" onclick="pollinate()"></button>
+    </div>
+</div>
+<div class="bottom-container">
+    <div class="panel" id="log-panel">
+        <h2 id="log-title"></h2>
+        <table id="log-table">
+            <thead>
+                <tr>
+                    <th id="log-seed1"></th>
+                    <th id="log-seed2"></th>
+                    <th id="log-result"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="panel challenges-card">
+        <h2 id="challenges-title"></h2>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <table id="challenges-table">
+            <thead>
+                <tr><th id="challenge-header"></th><th id="completed-header"></th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<script>
+
+const translations = {
+  pt: {
+    title: "Jardim de Mendel",
+    seedBank: "Banco de Sementes",
+    gardenBox: "Caixa de Plantio",
+    plantSeed: "Plantar Semente",
+    pollinate: "Polinizar",
+    log: "Registro de Polinização",
+    seed1: "Semente 1",
+    seed2: "Semente 2",
+    result: "Resultado",
+    challenges: "Desafios",
+    challenge: "Desafio",
+    completed: "Completo",
+    challengeData: [
+      { type: 'growColor', targets: ['green'], name: "Cultive uma planta verde", hint: "Produza uma planta com folhas verdes" },
+      { type: 'growColor', targets: ['blue'], name: "Cultive uma planta azul", hint: "Produza uma planta com folhas azuis" },
+      { type: 'growColor', targets: ['red'], name: "Cultive uma planta vermelha", hint: "Produza uma planta com folhas vermelhas" },
+      { type: 'growColor', targets: ['yellow'], name: "Cultive uma planta amarela", hint: "Produza uma planta com folhas amarelas" },
+      { type: 'growDots', targets: ['black'], name: "Cultive uma planta com pontos pretos", hint: "Produza uma planta que tenha pontos pretos visíveis" },
+      { type: 'growDots', targets: ['white'], name: "Cultive uma planta com pontos brancos", hint: "Produza uma planta que tenha pontos brancos visíveis" },
+      { type: 'growDots', targets: ['pink'], name: "Cultive uma planta com pontos rosas", hint: "Produza uma planta que tenha pontos rosas visíveis" },
+      { type: 'growDots', targets: ['orange'], name: "Cultive uma planta com pontos laranja", hint: "Produza uma planta que tenha pontos laranja visíveis" },
+      { type: 'pollinateColorPair', targets: ['green'], name: "Polinize duas plantas verdes", hint: "Use duas plantas verdes na polinização" },
+      { type: 'pollinateColorPair', targets: ['blue'], name: "Polinize duas plantas azuis", hint: "Use duas plantas azuis na polinização" },
+      { type: 'pollinateColorPair', targets: ['red'], name: "Polinize duas plantas vermelhas", hint: "Use duas plantas vermelhas na polinização" },
+      { type: 'pollinateColorPair', targets: ['yellow'], name: "Polinize duas plantas amarelas", hint: "Use duas plantas amarelas na polinização" },
+      { type: 'pollinateDotsPair', targets: ['black', 'white'], name: "Polinize uma planta com pontos pretos e outra com pontos brancos", hint: "Use uma planta com pontos pretos e outra com pontos brancos" },
+      { type: 'pollinateDotsPair', targets: ['pink', 'orange'], name: "Polinize uma planta com pontos rosas e outra com pontos laranja", hint: "Use uma planta com pontos rosas e outra com pontos laranja" },
+      { type: 'growColorDots', targets: ['green', 'black'], name: "Crie uma planta verde com pontos pretos", hint: "Produza uma planta verde com pontos pretos" },
+      { type: 'growColorDots', targets: ['blue', 'white'], name: "Crie uma planta azul com pontos brancos", hint: "Produza uma planta azul com pontos brancos" },
+      { type: 'growColorDots', targets: ['red', 'pink'], name: "Crie uma planta vermelha com pontos rosas", hint: "Produza uma planta vermelha com pontos rosas" },
+      { type: 'growColorDots', targets: ['yellow', 'orange'], name: "Crie uma planta amarela com pontos laranja", hint: "Produza uma planta amarela com pontos laranja" },
+      { type: 'homozygous', targets: [], name: "Crie uma planta homozigótica", hint: "Uma planta com ambos genes iguais para cor e pontos" },
+      { type: 'heterozygous', targets: [], name: "Crie uma planta heterozigótica", hint: "Uma planta com ambos genes diferentes para cor e pontos" }
+    ]
+  },
+  en: {
+    title: "Mendel's Garden",
+    seedBank: "Seed Bank",
+    gardenBox: "Garden Box",
+    plantSeed: "Plant Seed",
+    pollinate: "Pollinate",
+    log: "Pollination Log",
+    seed1: "Seed 1",
+    seed2: "Seed 2",
+    result: "Result",
+    challenges: "Challenges",
+    challenge: "Challenge",
+    completed: "Completed",
+    challengeData: [
+      { type: 'growColor', targets: ['green'], name: "Grow a green plant", hint: "Produce a plant with green leaves" },
+      { type: 'growColor', targets: ['blue'], name: "Grow a blue plant", hint: "Produce a plant with blue leaves" },
+      { type: 'growColor', targets: ['red'], name: "Grow a red plant", hint: "Produce a plant with red leaves" },
+      { type: 'growColor', targets: ['yellow'], name: "Grow a yellow plant", hint: "Produce a plant with yellow leaves" },
+      { type: 'growDots', targets: ['black'], name: "Grow a plant with black dots", hint: "Produce a plant with visible black dots" },
+      { type: 'growDots', targets: ['white'], name: "Grow a plant with white dots", hint: "Produce a plant with visible white dots" },
+      { type: 'growDots', targets: ['pink'], name: "Grow a plant with pink dots", hint: "Produce a plant with visible pink dots" },
+      { type: 'growDots', targets: ['orange'], name: "Grow a plant with orange dots", hint: "Produce a plant with visible orange dots" },
+      { type: 'pollinateColorPair', targets: ['green'], name: "Pollinate two green plants", hint: "Use two green plants in pollination" },
+      { type: 'pollinateColorPair', targets: ['blue'], name: "Pollinate two blue plants", hint: "Use two blue plants in pollination" },
+      { type: 'pollinateColorPair', targets: ['red'], name: "Pollinate two red plants", hint: "Use two red plants in pollination" },
+      { type: 'pollinateColorPair', targets: ['yellow'], name: "Pollinate two yellow plants", hint: "Use two yellow plants in pollination" },
+      { type: 'pollinateDotsPair', targets: ['black', 'white'], name: "Pollinate a plant with black dots and a plant with white dots", hint: "Use one plant with black dots and another with white dots" },
+      { type: 'pollinateDotsPair', targets: ['pink', 'orange'], name: "Pollinate a plant with pink dots and a plant with orange dots", hint: "Use one plant with pink dots and another with orange dots" },
+      { type: 'growColorDots', targets: ['green', 'black'], name: "Create a plant with green color and black dots", hint: "Produce a green plant with black dots" },
+      { type: 'growColorDots', targets: ['blue', 'white'], name: "Create a plant with blue color and white dots", hint: "Produce a blue plant with white dots" },
+      { type: 'growColorDots', targets: ['red', 'pink'], name: "Create a plant with red color and pink dots", hint: "Produce a red plant with pink dots" },
+      { type: 'growColorDots', targets: ['yellow', 'orange'], name: "Create a plant with yellow color and orange dots", hint: "Produce a yellow plant with orange dots" },
+      { type: 'homozygous', targets: [], name: "Create a homozygous plant", hint: "A plant with both genes identical for color and dots" },
+      { type: 'heterozygous', targets: [], name: "Create a heterozygous plant", hint: "A plant with both genes different for color and dots" }
+    ]
+  }
+};
+
+let currentLang = 'pt';
+let completedChallenges = [];
+
+function changeLanguage(lang) {
+  currentLang = lang;
+  const t = translations[lang];
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("seed-bank-title").textContent = t.seedBank;
+  document.getElementById("garden-box-title").textContent = t.gardenBox;
+  document.getElementById("plant-button").textContent = t.plantSeed;
+  document.getElementById("pollinate-button").textContent = t.pollinate;
+  document.getElementById("log-title").textContent = t.log;
+  document.getElementById("log-seed1").textContent = t.seed1;
+  document.getElementById("log-seed2").textContent = t.seed2;
+  document.getElementById("log-result").textContent = t.result;
+  document.getElementById("challenges-title").textContent = t.challenges;
+  document.getElementById("challenge-header").textContent = t.challenge;
+  document.getElementById("completed-header").textContent = t.completed;
+
+  challenges = t.challengeData.map(c => c.name);
+  hints = t.challengeData.map(c => c.hint);
+  
+  if (completedChallenges.length !== challenges.length) {
+    completedChallenges = new Array(challenges.length).fill(false);
+  }
+
+  renderChallenges();
+}
+
+const colors = ["green", "blue", "red", "yellow"];
+const dots = ["black", "white", "pink", "orange"];
+const colorDominance = { G: "green", B: "blue", R: "red", Y: "yellow" };
+const dotsDominance = { K: "black", W: "white", P: "pink", O: "orange" };
+
+let seedBank = [], gardenBox = [], selectedSeedIndex = null;
+
+let challenges = [];
+
+let hints = [];
+
+function randomGene(map) { return Object.keys(map)[Math.floor(Math.random()*Object.keys(map).length)]; }
+
+function createRandomSeed() {
+    const colorGenes = [randomGene(colorDominance), randomGene(colorDominance)];
+    const dotGenes = [randomGene(dotsDominance), randomGene(dotsDominance)];
+    return { genotype:{color:colorGenes, dots:dotGenes}, color:getPhenotype(colorGenes, colorDominance), dots:getPhenotype(dotGenes, dotsDominance) };
+}
+
+function getPhenotype(genes, map) { if (genes[0]===genes[1]) return map[genes[0]]; return map[genes[0]]||map[genes[1]]; }
+
+function renderSeedBank() {
+    const bankDiv=document.getElementById("seed-bank"); bankDiv.innerHTML="";
+    seedBank.forEach((seed,index)=>{
+        const seedDiv=document.createElement("div");
+        seedDiv.className="seed"+(selectedSeedIndex===index?" selected":"");
+        seedDiv.style.backgroundColor=seed.color;
+        seedDiv.title=`Color genes: ${seed.genotype.color.join("/")}, Dots genes: ${seed.genotype.dots.join("/")}`;
+        const dotDiv=document.createElement("div");
+        dotDiv.className="dot"; dotDiv.style.backgroundColor=seed.dots; seedDiv.appendChild(dotDiv);
+        seedDiv.addEventListener("click",()=>{selectedSeedIndex=index; renderSeedBank();});
+        bankDiv.appendChild(seedDiv);
+    });
+}
+function renderGardenBox() {
+    const gardenDiv=document.getElementById("garden-box"); gardenDiv.innerHTML="";
+    for(let i=0;i<2;i++){
+        if(gardenBox[i]){
+            const seedDiv=document.createElement("div");
+            seedDiv.className="seed"; seedDiv.style.backgroundColor=gardenBox[i].color;
+            const dotDiv=document.createElement("div");
+            dotDiv.className="dot"; dotDiv.style.backgroundColor=gardenBox[i].dots;
+            seedDiv.appendChild(dotDiv); gardenDiv.appendChild(seedDiv);
+        } else {
+            const slotDiv=document.createElement("div");
+            slotDiv.className="slot empty"; gardenDiv.appendChild(slotDiv);
+        }
+    }
+}
+function plantSelectedSeed(){
+    if(selectedSeedIndex===null||gardenBox.length>=2) return;
+    gardenBox.push(seedBank[selectedSeedIndex]);
+    seedBank.splice(selectedSeedIndex,1);
+    selectedSeedIndex=null; renderSeedBank(); renderGardenBox();
+}
+function pollinate(){
+  if (gardenBox.length !== 2) return;
+
+  const parents = [gardenBox[0], gardenBox[1]];
+  const results = [];
+
+  for (let i = 0; i < 4; i++) {
+    const childColor = [
+      parents[0].genotype.color[Math.random() < 0.5 ? 0 : 1],
+      parents[1].genotype.color[Math.random() < 0.5 ? 0 : 1]
+    ];
+    const childDots = [
+      parents[0].genotype.dots[Math.random() < 0.5 ? 0 : 1],
+      parents[1].genotype.dots[Math.random() < 0.5 ? 0 : 1]
+    ];
+    const newSeed = {
+      genotype: { color: childColor, dots: childDots },
+      color: getPhenotype(childColor, colorDominance),
+      dots: getPhenotype(childDots, dotsDominance)
+    };
+    seedBank.push(newSeed);
+    results.push(newSeed);
+  }
+
+  // Log
+  const tbody = document.querySelector('#log-table tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${parents[0].genotype.color.join('/')}, ${parents[0].genotype.dots.join('/')}</td>
+    <td>${parents[1].genotype.color.join('/')}, ${parents[1].genotype.dots.join('/')}</td>
+    <td>${results.map(s => `${s.genotype.color.join('/')},${s.genotype.dots.join('/')}`).join(' | ')}</td>
+  `;
+  tbody.appendChild(tr);
+
+  // Challenges based on this pollination
+  checkChallenges(results, parents);
+
+  // Clear garden **in place** so all scopes see it empty
+  gardenBox.length = 0;
+  renderSeedBank();
+  renderGardenBox();
+}
+
+function renderChallenges(){
+    const tbody=document.querySelector("#challenges-table tbody"); tbody.innerHTML="";
+    challenges.forEach((c,i)=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td title='${hints[i]}'>${c}</td><td>${completedChallenges[i]?"✅":"❌"}</td>`;
+        tbody.appendChild(tr);
+    });
+    updateProgressBar();
+}
+function checkChallenges(results, parents) {
+    const t = translations[currentLang];
+    
+    results.forEach(seed => {
+        t.challengeData.forEach((challenge, i) => {
+            if (completedChallenges[i]) return;
+
+            switch(challenge.type) {
+                case 'growColor':
+                    if (seed.color.toLowerCase() === challenge.targets[0].toLowerCase()) {
+                        completedChallenges[i] = true;
+                    }
+                    break;
+                    
+                case 'growDots':
+                    if (seed.dots.toLowerCase() === challenge.targets[0].toLowerCase()) {
+                        completedChallenges[i] = true;
+                    }
+                    break;
+                    
+                case 'pollinateColorPair':
+                    if (parents[0].color.toLowerCase() === challenge.targets[0].toLowerCase() &&
+                        parents[1].color.toLowerCase() === challenge.targets[0].toLowerCase()) {
+                        completedChallenges[i] = true;
+                    }
+                    break;
+                    
+                case 'pollinateDotsPair':
+                    const parentDots = [parents[0].dots.toLowerCase(), parents[1].dots.toLowerCase()];
+                    if (parentDots.includes(challenge.targets[0].toLowerCase()) && 
+                       parentDots.includes(challenge.targets[1].toLowerCase())) {
+                        completedChallenges[i] = true;
+                    }
+                    break;
+                    
+                case 'growColorDots':
+                    if (seed.color.toLowerCase() === challenge.targets[0].toLowerCase() &&
+                        seed.dots.toLowerCase() === challenge.targets[1].toLowerCase()) {
+                        completedChallenges[i] = true;
+                    }
+                    break;
+                    
+                case 'homozygous':
+                    if (seed.genotype.color[0] === seed.genotype.color[1] && 
+                        seed.genotype.dots[0] === seed.genotype.dots[1]) {
+                        completedChallenges[i] = true;
+                    }
+                    break;
+                    
+                case 'heterozygous':
+                    if (seed.genotype.color[0] !== seed.genotype.color[1] && 
+                        seed.genotype.dots[0] !== seed.genotype.dots[1]) {
+                        completedChallenges[i] = true;
+                    }
+                    break;
+            }
+        });
+    });
+    
+    renderChallenges();
+}
+
+function updateProgressBar(){
+    const completedCount=completedChallenges.filter(x=>x).length;
+    document.getElementById("progress-fill").style.width=(completedCount/challenges.length*100)+"%";
+}
+
+for(let i=0;i<6;i++) seedBank.push(createRandomSeed());
+renderSeedBank(); 
+renderGardenBox(); 
+renderChallenges();
+changeLanguage(currentLang);
+</script>
+</body>
+</html>
